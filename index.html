@@ -1,0 +1,678 @@
+<script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex)); // Create a new sheet from filtered array of arrays
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+        </script><!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- <title>Kevin Lapus - Matrix Portfolio</title> -->
+    <title>Kevin Lapus - CV Matrix</title>
+    <link rel="icon" href="head.ico" type="image/x-icon">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Courier New', monospace;
+        }
+
+        body {
+            background-color: #0a0a0a;
+            color: #00ff00;
+            line-height: 1.7;
+            overflow-x: hidden;
+        }
+
+        .navbar {
+            background: #000;
+            padding: 1rem;
+            position: sticky;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
+            box-shadow: 0 4px 6px rgba(0, 255, 0, 0.1);
+        }
+
+        .navbar ul {
+            list-style: none;
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .navbar a {
+            color: #00ff00;
+            text-decoration: none;
+            font-size: 1rem;
+            font-weight: 500;
+            position: relative;
+            transition: color 0.3s ease;
+        }
+
+        .navbar a::after {
+            content: '';
+            position: absolute;
+            width: 0;
+            height: 2px;
+            background: #00cc00;
+            bottom: -4px;
+            left: 0;
+            transition: width 0.3s ease;
+        }
+
+        .navbar a:hover::after {
+            width: 100%;
+        }
+
+        .navbar a:hover {
+            color: #00cc00;
+        }
+
+        .section {
+            padding: 5rem 1.5rem;
+            max-width: 1280px;
+            margin: 0 auto;
+        }
+
+        .hero {
+            background: linear-gradient(135deg, #001100, #002200);
+            background: url('matrixrain.gif');
+            color: #00ff00;
+            text-align: center;
+            padding: 8rem 1.5rem;
+            position: relative;
+            overflow: hidden;
+            background-repeat: no-repeat;
+            background-size: cover;    
+            background-position: center; 
+            width: 100%;  
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg"><text x="0" y="20" font-family="Courier New" font-size="16" fill="#00ff00" opacity="0.2">1010101010101010101010101010101010101010101010101010101010101010</text></svg>') repeat;
+            animation: matrixRain 10s linear infinite;
+        }
+
+        .hero h1 {
+            font-size: 3rem;
+            font-weight: 700;
+            margin-bottom: 1rem;
+            animation: fadeInUp 1s ease-out;
+            text-shadow: 0 0 10px #00ff00;
+        }
+
+        .hero p {
+            font-size: 1.25rem;
+            font-weight: 300;
+            animation: fadeInUp 1.2s ease-out;
+        }
+
+        .card {
+            background: #111;
+            border: 1px solid #00ff00;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+
+        .card.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card:hover {
+            transform: translateY(-8px);
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.5);
+        }
+
+        .skills-grid, .languages-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+
+        .skill-item, .language-item {
+            background: #002200;
+            color: #00ff00;
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 0.9rem;
+            transition: transform 0.3s ease, background 0.3s ease;
+        }
+
+        .skill-item:hover, .language-item:hover {
+            transform: scale(1.05);
+            background: #003300;
+        }
+
+        h2 {
+            font-size: 2.25rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            color: #00ff00;
+            position: relative;
+            text-shadow: 0 0 8px #00ff00;
+        }
+
+        h2::after {
+            content: '';
+            width: 50px;
+            height: 3px;
+            background: #00cc00;
+            position: absolute;
+            bottom: -8px;
+            left: 0;
+        }
+
+        .contact-info, .reference-info {
+            margin-top: 1rem;
+        }
+
+        .contact-info p, .reference-info p {
+            margin: 0.6rem 0;
+            font-size: 1rem;
+        }
+
+        ul {
+            list-style: none;
+            margin-top: 1rem;
+        }
+
+        ul li {
+            margin: 0.6rem 0;
+            position: relative;
+            padding-left: 1.5rem;
+            font-size: 0.95rem;
+        }
+
+        ul li::before {
+            content: '>>';
+            color: #00ff00;
+            position: absolute;
+            left: 0;
+            font-weight: bold;
+        }
+
+ 
+        #contacts{
+            display: flex;
+            gap: 200px;
+
+        }
+
+        .contact-image{
+            opacity: 0.5;
+           
+        }
+        .contact-image::after{
+            transform: translateY(50px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+        }
+        
+        /* Contact Form Styles */
+        .contact-form-container {
+            background: #111;
+            border: 1px solid #00ff00;
+            border-radius: 12px;
+            padding: 2rem;
+            margin: 1rem 0;
+            box-shadow: 0 0 15px rgba(0, 255, 0, 0.3);
+            width: 100%;
+            max-width: 500px;
+            opacity: 0;
+            transform: translateY(50px);
+            transition: opacity 0.5s ease, transform 0.5s ease;
+           
+        }
+
+        .contact-form-container.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .contact-form-container h3 {
+            text-align: center;
+            font-size: 1.5rem;
+            margin-bottom: 1.5rem;
+            color: #00ff00;
+            text-shadow: 0 0 8px #00ff00;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: bold;
+            color: #00ff00;
+        }
+
+        .form-group input,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 1px solid #00cc00;
+            border-radius: 6px;
+            background: #002200;
+            color: #00ff00;
+            font-family: 'Courier New', monospace;
+            font-size: 0.95rem;
+            box-sizing: border-box;
+        }
+
+        .form-group textarea {
+            height: 120px;
+            resize: vertical;
+        }
+
+        .form-group input:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #00ff00;
+            box-shadow: 0 0 8px rgba(0, 255, 0, 0.5);
+        }
+
+        .form-group button {
+            width: 100%;
+            padding: 0.8rem;
+            background-color: #003300;
+            color: #00ff00;
+            border: 1px solid #00cc00;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            transition: background-color 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .form-group button:hover {
+            background-color: #004400;
+            box-shadow: 0 0 10px rgba(0, 255, 0, 0.5);
+        }
+
+        .form-group button.success {
+            background-color: #006600;
+            border-color: #00ff00;
+        }
+
+        .form-group button.success:hover {
+            background-color: #007700;
+        }
+
+        #status {
+            margin-top: 1rem;
+            text-align: center;
+            color: #00ff00;
+            font-size: 0.9rem;
+            text-shadow: 0 0 5px #00ff00;
+        }
+
+        footer {
+            background: #000;
+            color: #00ff00;
+            text-align: center;
+            padding: 1.5rem;
+            font-size: 0.9rem;
+            border-top: 1px solid #00ff00;
+        }
+
+        @keyframes fadeInUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
+        }
+
+        @keyframes matrixRain {
+            0% { background-position: 0 0; }
+            100% { background-position: 0 1000px; }
+        }
+
+        @media (max-width: 1024px) {
+            .hero h1 { font-size: 2.5rem; }
+            .hero p { font-size: 1.1rem; }
+            .section { padding: 4rem 1rem; }
+            .navbar ul { gap: 1.5rem; }
+        }
+
+        @media (max-width: 640px) {
+            .hero h1 { font-size: 2rem; }
+            .hero p { font-size: 1rem; }
+            .navbar ul {
+                flex-direction: column;
+                align-items: center;
+                gap: 1rem;
+            }
+            .skills-grid, .languages-grid {
+                grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            }
+            h2 { font-size: 1.75rem; }
+            .contact-form-container { max-width: 100%; }
+        }
+    </style>
+</head>
+<body>
+    <script type="text/javascript">
+        var gk_isXlsx = false;
+        var gk_xlsxFileLookup = {};
+        var gk_fileData = {};
+        function filledCell(cell) {
+          return cell !== '' && cell != null;
+        }
+        function loadFileData(filename) {
+        if (gk_isXlsx && gk_xlsxFileLookup[filename]) {
+            try {
+                var workbook = XLSX.read(gk_fileData[filename], { type: 'base64' });
+                var firstSheetName = workbook.SheetNames[0];
+                var worksheet = workbook.Sheets[firstSheetName];
+
+                // Convert sheet to JSON to filter blank rows
+                var jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, blankrows: false, defval: '' });
+                // Filter out blank rows (rows where all cells are empty, null, or undefined)
+                var filteredData = jsonData.filter(row => row.some(filledCell));
+
+                // Heuristic to find the header row by ignoring rows with fewer filled cells than the next row
+                var headerRowIndex = filteredData.findIndex((row, index) =>
+                  row.filter(filledCell).length >= filteredData[index + 1]?.filter(filledCell).length
+                );
+                // Fallback
+                if (headerRowIndex === -1 || headerRowIndex > 25) {
+                  headerRowIndex = 0;
+                }
+
+                // Convert filtered JSON back to CSV
+                var csv = XLSX.utils.aoa_to_sheet(filteredData.slice(headerRowIndex));
+                csv = XLSX.utils.sheet_to_csv(csv, { header: 1 });
+                return csv;
+            } catch (e) {
+                console.error(e);
+                return "";
+            }
+        }
+        return gk_fileData[filename] || "";
+        }
+    </script>
+
+    <nav class="navbar">
+        <ul>
+            <li><a href="#home">> Home</a></li>
+            <li><a href="#about">> About</a></li>
+            <li><a href="#education">> Education</a></li>
+            <li><a href="#skills">> Skills</a></li>
+            <li><a href="#experience">> Experience</a></li>
+            <li><a href="#references">> References</a></li>
+            <li><a href="#contact">> Contact</a></li>
+        </ul>
+    </nav>
+
+    <section id="home" class="hero">
+        <h1>Kevin Lapus</h1>
+        <p>Code Weaver in the Digital Matrix</p>
+    </section>
+
+    <section id="about" class="section">
+        <h2>System Overview</h2>
+        <div class="card">
+            <p>I am a relentless IT architect, coding solutions that break free from the ordinary. Thriving in networked teams, I channel my expertise to forge pathways through the digital frontier.</p>
+        </div>
+    </section>
+
+    <section id="education" class="section">
+        <h2>Data Archives</h2>
+        <div class="card">
+            <h3>B.S. in Information Technology</h3>
+            <p>Consolatrix College of Toledo City, INC</p>
+            <p>2019 - 2021</p>
+            <p>Encrypted a robust knowledge base in software development and data systems, ready to decode complex challenges.</p>
+        </div>
+        <div class="card">
+            <h3>Associate of Information Technology</h3>
+            <p>Consolatrix College of Toledo City, INC</p>
+            <p>2017 - 2018</p>
+            <p>Initialized core algorithms, setting the stage for advanced system upgrades.</p>
+        </div>
+    </section>
+
+    <section id="skills" class="section">
+        <h2>Protocols & Interfaces</h2>
+        <div class="card">
+            <div class="skills-grid">
+                <div class="skill-item">System Leadership</div>
+                <div class="skill-item">Data Transmission</div>
+                <div class="skill-item">Network Synergy</div>
+                <div class="skill-item">Cycle Optimization</div>
+                <div class="skill-item">Code Innovation</div>
+                <div class="skill-item">Node Engagement</div>
+                <div class="skill-item">Error Resolution</div>
+            </div>
+            <h3>Communication Protocols</h3>
+            <div class="languages-grid">
+                <div class="language-item">English</div>
+                <div class="language-item">Tagalog</div>
+                <div class="language-item">Cebuano</div>
+            </div>
+        </div>
+    </section>
+
+    <section id="experience" class="section">
+        <h2>Operation Logs</h2>
+        <div class="card">
+            <h3>Data Analyst</h3>
+            <p>Interatech Solutions INC.</p>
+            <p>March 2024 - June 2024</p>
+            <ul>
+                <li>Decoded raw data streams into strategic outputs using advanced analytics.</li>
+                <li>Synced with cross-functional nodes to deploy efficiency-enhancing solutions.</li>
+                <li>Scanned for patterns with statistical algorithms, fueling precise system decisions.</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>ETL Support Specialist</h3>
+            <p>Seven Seven Global INC.</p>
+            <p>August 2022 - October 2023</p>
+            <ul>
+                <li>Maintained data pipeline integrity with rapid debugging and support.</li>
+                <li>Streamed data from databases, APIs, and cloud nodes for optimized processing.</li>
+                <li>Automated ETL workflows with Informatica, reducing system latency.</li>
+            </ul>
+        </div>
+        <div class="card">
+            <h3>Programmer</h3>
+            <p>Tsuneishi Heavy Industries (Cebu) INC.</p>
+            <p>October 2021 - April 2022</p>
+            <ul>
+                <li>Engineered user-centric code architectures aligned with mission parameters.</li>
+                <li>Secured system stability through rigorous testing protocols.</li>
+                <li>Integrated next-gen tools to deploy innovative digital frameworks.</li>
+            </ul>
+        </div>
+    </section>
+
+    <section id="references" class="section">
+        <h2>Trusted Nodes</h2>
+        <div class="card">
+            <div class="reference-info">
+                <p><strong>Mr. Procor V. Gonzaga</strong></p>
+                <p>IT Program Head, Consolatrix College of Toledo City, INC</p>
+                <p>Phone: 09773694144</p>
+            </div>
+            <div class="reference-info">
+                <p><strong>Mrs. Juresa Salvio Camoro</strong></p>
+                <p>Information Technology Professor, Consolatrix College of Toledo City, INC</p>
+                <p>Phone: 09667358017</p>
+            </div>
+        </div>
+    </section>
+
+    <section id="contact" class="section">
+        <h2>Access Point</h2>
+        <div class="card">
+            <div class="contact-info">
+                <p><strong>Phone:</strong> +63-994-753-4376</p>
+                <p><strong>Email:</strong> <a href="mailto:kevinlapus.v@gmail.com">kevinlapus.v@gmail.com</a></p>
+                <p><strong>Address:</strong> Media Once, Toledo City, Cebu 6038</p>
+                <p><strong>Website:</strong> <a href="https://kevinlapus.github.io/web" target="_blank">kevinlapus.github.io/web</a></p>
+            </div>
+        </div>
+      
+
+        <div id="contacts">
+        <div class="contact-form-container"> 
+            <h3>Transmit Data</h3>
+            <div class="form-group">
+                <label for="name">Identifier</label>
+                <input type="text" id="name" placeholder="Your identifier" required>
+            </div>
+            <div class="form-group">
+                <label for="email">Node Address</label>
+                <input type="email" id="email" placeholder="Your email address" required>
+            </div>
+            <div class="form-group">
+                <label for="message">Data Packet</label>
+                <textarea id="message" placeholder="Your message" required></textarea>
+            </div>
+            <div class="form-group">
+                <button id="sendButton" onclick="sendEmail()">Transmit</button>
+            </div>
+            <div id="status"></div>
+        </div>
+        <!-- imge -->
+        <div class="contact-image"> 
+          
+            <!-- <img src="matrixrain.gif" alt="Description of image"> -->
+            <img src="kevin.png" alt="Description of image">
+       </div>
+        </div>
+    </section>
+
+    <footer>
+        <p>© 2025 Kevin Lapus. Engineered in the Matrix.</p>
+    </footer>
+
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    <script>
+        // Initialize EmailJS
+        (function(){
+            emailjs.init("sZDE-f9YXLagihQsJ");
+        })();
+
+        function sendEmail() {
+            const name = document.getElementById('name').value;
+            const email = document.getElementById('email').value;
+            const message = document.getElementById('message').value;
+            const status = document.getElementById('status');
+            const sendButton = document.getElementById('sendButton');
+
+            // Reset button state
+            sendButton.classList.remove('success');
+            sendButton.style.backgroundColor = '#003300';
+
+            if (!name.trim() || !email.trim() || !message.trim()) {
+                status.innerText = "Error: All data fields required.";
+       
+                     return;
+            }
+
+            status.innerText = "Transmitting...";
+
+            emailjs.send("service_iwro3rs", "template_e65u4lt", {
+                name: name,
+                email: email,
+                message: message,
+                to_email: "kevinlapus.v@gmail.com"
+            })
+            .then(() => {
+                status.innerText = "Transmission successful!";
+                sendButton.classList.add('success');
+                document.getElementById('name').value = '';
+                document.getElementById('email').value = '';
+                document.getElementById('message').value = '';
+            })
+            .catch((error) => {
+                status.innerText = "Transmission failed. Retry.";
+                console.error("EmailJS error:", error);
+            });
+        }
+
+        // Smooth scrolling for navigation
+        document.querySelectorAll('.navbar a').forEach(anchor => {
+            anchor.addEventListener('click', function(e) {
+                e.preventDefault();
+                const targetId = this.getAttribute('href');
+                const targetSection = document.querySelector(targetId);
+                window.scrollTo({
+                    top: targetSection.offsetTop - 60,
+                    behavior: 'smooth'
+                });
+            });
+        });
+
+        // Animate cards and form container on scroll
+        const cards = document.querySelectorAll('.card, .contact-form-container');
+        const observer = new IntersectionObserver((entries) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    entry.target.classList.add('show');
+                }
+            });
+        }, { threshold: 0.1 });
+
+        cards.forEach(card => observer.observe(card));
+
+        // Subtle parallax effect on hero
+        window.addEventListener('scroll', () => {
+            const hero = document.querySelector('.hero');
+            const scrollPosition = window.pageYOffset;
+            hero.style.backgroundPositionY = `${scrollPosition * 0.3}px`;
+        });
+    </script>
